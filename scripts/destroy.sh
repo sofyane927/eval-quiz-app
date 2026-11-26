@@ -37,6 +37,19 @@ if [[ "${1:-}" != "--apply" ]]; then
   exit 0
 fi
 
+missing="$(jq -r --arg acr "$AZURE_ACR_NAME" '
+  map((.type | ascii_downcase) + ":" + .name) as $inventory
+  | ["microsoft.containerregistry/registries:" + $acr,
+    "microsoft.app/containerapps:backend",
+    "microsoft.app/containerapps:quiz-frontend",
+    "microsoft.app/managedenvironments:quiz-env-standard"] - $inventory
+  | .[]
+' <<< "$inventory")"
+if [[ -n "$missing" ]]; then
+  printf 'Quiz App resources are missing. Group deletion blocked:\n%s\n' "$missing" >&2
+  exit 1
+fi
+
 read -r -p 'Type the full resource group ID above to confirm: ' confirmation
 if [[ "$confirmation" != "$group_id" ]]; then
   printf 'Confirmation does not match.\n' >&2

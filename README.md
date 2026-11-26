@@ -135,9 +135,13 @@ Pour relancer le même déploiement manuellement, positionnez-vous sur un `main`
 
 ## Nettoyer Azure après l’évaluation
 
-Conservez les preuves du déploiement et attendez l’accord du formateur. Depuis Bash, connectez-vous avec `az login` et définissez `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` et `AZURE_ACR_NAME`, comme pour le déploiement. Lancez `bash scripts/destroy.sh` pour afficher l’inventaire du groupe dédié au TP. Le script bloque la suppression si une ressource hors périmètre apparaît.
+Conservez les preuves du déploiement et attendez l’accord du formateur. Depuis Bash, connectez-vous avec `az login` et définissez `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` et `AZURE_ACR_NAME`, comme pour le déploiement. Lancez `bash scripts/destroy.sh` pour afficher l’inventaire du groupe dédié au TP. Le script exige la présence du registre, de l’environnement et des deux applications du quiz. Il bloque la suppression si une ressource hors périmètre apparaît.
 
 Pour supprimer ce groupe et les ressources listées, relancez `bash scripts/destroy.sh --apply` et saisissez l’identifiant complet affiché. Cette suppression arrête le site Azure et efface le registre ACR. Les services Neon et Cloudflare se gèrent dans leurs comptes respectifs.
+
+## Usage de l’IA
+
+Nous avons utilisé Codex pour nous aider à écrire les Dockerfiles et les workflows, diagnostiquer les erreurs Azure, intégrer Cloudflare et préparer la documentation. Nous avons vérifié les propositions avec Docker Compose, les rapports Trivy, les contrôles GitHub et des essais sur Azure. Nous avons rejoué le parcours du quiz et vérifié que les scores apparaissaient dans PostgreSQL et dans l’administration. Le script de nettoyage a été testé avec des commandes Azure simulées.
 
 ## Règles générales
 
