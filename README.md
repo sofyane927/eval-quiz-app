@@ -40,6 +40,7 @@ Lisez les documents dans cet ordre :
 - [Ressources officielles](docs/07-ressources.md)
 - [Documentation technique de Quiz App : ports, API et configuration](docs/08-documentation-technique.md)
 - [Utilisation responsable de l’IA](docs/09-utilisation-ia.md)
+- [Schéma d’architecture locale (PNG)](docs/architecture-locale.png)
 
 **Important :** les comptes Azure for Students peuvent être limités par les crédits, quotas, régions et autorisations. Vérifiez les possibilités de votre abonnement avant de créer des ressources payantes. Supprimez les ressources inutilisées après sauvegarde des preuves et accord du formateur.
 
