@@ -77,6 +77,50 @@ docker save quiz-backend:j2-final | docker run --rm -i --entrypoint /bin/sh aqua
   > backend-apres-correction.json
 ```
 
+## J6-B — Déploiement automatique sur Azure
+
+Le workflow **Deploy to Azure** se lance après une mise à jour de `main`. Il construit et scanne les deux images, les publie dans ACR avec le SHA complet du commit, puis déploie les images par digest. Si un commit plus récent arrive sur `main` pendant le scan, le workflow lui laisse le déploiement. Il affiche les révisions prêtes et vérifie `/health` depuis le frontend public.
+
+Utilisez le registre et les applications `backend` et `quiz-frontend` déjà créés au J4, en mode de révision unique. Le frontend doit pouvoir joindre `backend:3007` via l’ingress TCP interne.
+
+### Autoriser GitHub à déployer
+
+Depuis PowerShell, utilisez le compte Azure qui gère le registre et les applications. Remplacez le nom du registre dans le bloc suivant. Il suppose que le registre et les deux applications sont dans le même groupe de ressources, comme dans votre déploiement initial.
+
+```powershell
+$acr = "NOM_DU_REGISTRE"
+function Invoke-QuizAz {
+    az @args
+    if ($LASTEXITCODE -ne 0) { throw "Azure CLI a échoué." }
+}
+$reg = Invoke-QuizAz acr show --name $acr -o json | ConvertFrom-Json
+$rg = $reg.resourceGroup
+$identity = Invoke-QuizAz identity create -n quiz-github-deploy -g $rg --location $reg.location -o json | ConvertFrom-Json
+$subject = "repo:sofyane927@290667771/eval-quiz-app@1472864342:ref:refs/heads/main"
+
+Invoke-QuizAz identity federated-credential create -n github-main --identity-name quiz-github-deploy -g $rg --issuer "https://token.actions.githubusercontent.com" --subject $subject --audiences "api://AzureADTokenExchange" -o none
+
+$pushRole = if ($reg.roleAssignmentMode -match 'abac') { "Container Registry Repository Writer" } else { "AcrPush" }
+Invoke-QuizAz role assignment create --assignee-object-id $identity.principalId --assignee-principal-type ServicePrincipal --role Reader --scope $reg.id -o none
+Invoke-QuizAz role assignment create --assignee-object-id $identity.principalId --assignee-principal-type ServicePrincipal --role $pushRole --scope $reg.id -o none
+foreach ($app in @("backend", "quiz-frontend")) {
+    $appId = Invoke-QuizAz containerapp show -n $app -g $rg --query id -o tsv
+    Invoke-QuizAz role assignment create --assignee-object-id $identity.principalId --assignee-principal-type ServicePrincipal --role "Container Apps Contributor" --scope $appId -o none
+}
+
+[ordered]@{
+    AZURE_CLIENT_ID = $identity.clientId
+    AZURE_TENANT_ID = $identity.tenantId
+    AZURE_SUBSCRIPTION_ID = (Invoke-QuizAz account show --query id -o tsv)
+    AZURE_ACR_NAME = $acr
+    AZURE_RESOURCE_GROUP = $rg
+} | ConvertTo-Json
+```
+
+Ajoutez les cinq valeurs affichées dans **Settings → Secrets and variables → Actions → Variables** sur le fork du groupe. La connexion OIDC est limitée à `main` et utilise un jeton temporaire. Les secrets Neon, Cloudflare et admin sont configurés sur le backend Azure. [Connexion Azure avec OIDC](https://learn.microsoft.com/fr-fr/azure/developer/github/connect-from-azure-openid-connect) · [Identifiant de sujet GitHub](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims)
+
+Pour relancer le même déploiement manuellement, positionnez-vous sur un `main` propre et à jour. Connectez-vous avec `az login` et lancez `bash scripts/deploy.sh` depuis la racine du dépôt avec `AZURE_ACR_NAME` et `AZURE_RESOURCE_GROUP` définies. La machine doit disposer de Docker avec Buildx, Azure CLI, curl et jq.
+
 ## Règles générales
 
 - Travail en groupe ; déposez le lien de votre dépôt et les preuves demandées au formateur.
