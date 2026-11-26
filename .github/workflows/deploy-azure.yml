@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: quiz-azure-deployment
-  cancel-in-progress: false
+  queue: max
 
 jobs:
   deploy:
