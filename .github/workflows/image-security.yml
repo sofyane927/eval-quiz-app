@@ -38,22 +38,3 @@ jobs:
 
       - name: Block critical vulnerabilities
         run: bash scripts/scan-image.sh "$IMAGE"
-
-      - name: Demonstrate a blocked critical finding
-        if: matrix.image == 'frontend'
-        run: |
-          temp="$(mktemp -d)"
-          cat > "$temp/docker" <<'SH'
-          #!/usr/bin/env bash
-          set -eu
-          if [[ "$1" == save ]]; then
-            printf 'Synthetic image archive\n'
-          else
-            cat >/dev/null
-            [[ "$1" == run && "$*" == *"--severity CRITICAL --exit-code 1"* ]]
-            echo "::error::Demonstration only: simulated Trivy critical finding"
-            exit 1
-          fi
-          SH
-          chmod +x "$temp/docker"
-          PATH="$temp:$PATH" bash scripts/scan-image.sh "$IMAGE"
