@@ -50,7 +50,9 @@ Pour activer l’envoi, renseignez `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_AP
 
 Le backend peut démarrer et enregistrer les résultats sans ces variables. Un refus de Cloudflare laisse le résultat disponible dans l’administration.
 
-## J2 — Sécurité de l’image frontend
+## J2 — Sécurité des images
+
+### Frontend
 
 Trivy a relevé quatre vulnérabilités modérées dans l’image Nginx sur Alpine 3.24.4 (ARM64). Le Dockerfile met à jour `libexpat` de `2.10.0-r0` à `2.11.0-r0` et `zlib` de `1.3.2-r1` à `1.4-r0`. Après reconstruction, Trivy 0.76.2 a détecté zéro vulnérabilité dans cette image. [Rapport avant](docs/trivy/frontend-avant.json) · [Rapport après](docs/trivy/frontend-apres.json)
 
@@ -62,6 +64,17 @@ trivy_image=aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f4
 docker save quiz-frontend:j2 | docker run --rm -i --entrypoint /bin/sh "$trivy_image" \
   -c 'cat > /tmp/quiz-frontend.tar && trivy image --no-progress --scanners vuln --format json --input /tmp/quiz-frontend.tar' \
   > trivy-frontend-apres.json
+```
+
+### Backend
+
+Le scan initial du backend (AMD64) comptait 32 alertes, dont 6 élevées. Le retrait du SDK Resend a supprimé deux alertes modérées. Le Dockerfile en deux étapes retire npm de l’image finale et met à jour `zlib` vers `1.4-r0` ainsi que `libcrypto3` et `libssl3` vers `3.5.9-r1`. Sur l’image reconstruite depuis le commit `f07bacb`, Trivy 0.71.0 a détecté **zéro vulnérabilité**. [Rapport initial](trivy-backend-avant.json) · [Rapport après retrait de Resend](trivy-backend-apres-cloudflare.json) · [Rapport après correction du Dockerfile](docs/trivy/backend-apres-correction.json)
+
+```bash
+docker build --platform linux/amd64 -t quiz-backend:j2-final ./backend
+docker save quiz-backend:j2-final | docker run --rm -i --entrypoint /bin/sh aquasec/trivy:0.71.0 \
+  -c 'cat > /tmp/backend.tar && trivy image --no-progress --scanners vuln --format json --input /tmp/backend.tar' \
+  > backend-apres-correction.json
 ```
 
 ## Règles générales
