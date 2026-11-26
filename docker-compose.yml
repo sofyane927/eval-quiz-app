@@ -10,7 +10,10 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      PGHOST: db
+      PGUSER: "${POSTGRES_USER:?POSTGRES_USER requis}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}"
+      PGDATABASE: "${POSTGRES_DB:?POSTGRES_DB requis}"
       ADMIN_USERNAME: "${ADMIN_USERNAME:?ADMIN_USERNAME requis}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD requis}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET requis}"

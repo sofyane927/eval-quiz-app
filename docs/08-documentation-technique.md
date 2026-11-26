@@ -65,7 +65,8 @@ Le projet utilise les variables suivantes :
 | `POSTGRES_USER`     | Utilisateur de PostgreSQL local                                            |
 | `POSTGRES_PASSWORD` | Mot de passe PostgreSQL local                                              |
 | `POSTGRES_DB`       | Nom de la base locale                                                      |
-| `DATABASE_URL`      | URL de connexion PostgreSQL fournie au backend dans le déploiement initial |
+| `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | Paramètres de connexion injectés par Docker Compose |
+| `DATABASE_URL`      | URL de connexion PostgreSQL utilisable hors de Docker Compose |
 | `CLOUDFLARE_ACCOUNT_ID` | Identifiant du compte Cloudflare |
 | `CLOUDFLARE_EMAIL_API_TOKEN` | Jeton Cloudflare avec la permission Email Sending → Edit |
 | `FROM_EMAIL` | Adresse d’expédition sur un domaine activé dans Cloudflare |
@@ -73,7 +74,7 @@ Le projet utilise les variables suivantes :
 | `ADMIN_PASSWORD`    | Mot de passe administrateur                                                |
 | `JWT_SECRET`        | Secret JWT                                                                 |
 
-Docker Compose construit une URL de connexion locale de la forme `postgresql://<utilisateur>:<mot-de-passe>@db:5432/<base>`. Le nom `db` fait référence au service PostgreSQL local. Les trois variables d’envoi d’email sont facultatives pour enregistrer les résultats.
+Docker Compose connecte le backend à `db` sur le port PostgreSQL par défaut (`5432`). Il transmet séparément l’identifiant, le mot de passe et le nom de la base. Les trois variables d’envoi d’email sont facultatives pour enregistrer les résultats.
 
 **Sécurité :** conserver les secrets hors du dépôt. Le fichier `.env.example`, s'il est fourni, doit contenir seulement des valeurs fictives et des indications de configuration.
 

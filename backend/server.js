@@ -13,6 +13,11 @@ app.set("trust proxy", 2);
 app.use(cors());
 app.use(express.json());
 
+// Health probes should not consume the API rate limit.
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 // Rate limiting - general (100 requests per 15 min)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -437,11 +442,6 @@ async function sendResultEmail(user, score, totalQuestions, answers) {
   console.error("Cloudflare did not accept the result email", response.status);
   return false;
 }
-
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
