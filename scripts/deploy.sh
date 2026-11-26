@@ -10,6 +10,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 tag="$(git rev-parse HEAD)"
+revision_suffix="cd-${GITHUB_RUN_ID:-$(date +%s)-$$}-${GITHUB_RUN_ATTEMPT:-1}"
 registry="$(az acr show --name "$AZURE_ACR_NAME" --resource-group "$AZURE_RESOURCE_GROUP" \
   --query loginServer -o tsv)"
 test -n "$registry"
@@ -43,13 +44,12 @@ docker push "$backend_image"
 docker push "$frontend_image"
 
 deploy_image() {
-  local app="$1" image="$2" digest revision ready attempt
+  local app="$1" image="$2" digest revision="$1--$revision_suffix" ready attempt
   digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
   image="${image%:*}@$digest"
-  revision="$(az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
-    --image "$image" --query properties.latestRevisionName -o tsv)"
-  test -n "$revision"
+  az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
+    --image "$image" --revision-suffix "$revision_suffix" --no-wait -o none
   for attempt in {1..24}; do
     ready="$(az containerapp show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
       --query properties.latestReadyRevisionName -o tsv)"
