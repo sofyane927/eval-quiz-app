@@ -40,14 +40,23 @@ if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
 fi
 
 az acr login --name "$AZURE_ACR_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
-docker push "$backend_image"
-docker push "$frontend_image"
+
+push_image() {
+  local image="$1" digest
+  digest="$(docker push "$image" | tee /dev/stderr |
+    awk -v tag="$tag:" '$1 == tag && $2 == "digest:" {print $3}')" || return 1
+  if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    printf 'Could not identify the published digest for %s.\n' "$image" >&2
+    return 1
+  fi
+  printf '%s@%s\n' "${image%:*}" "$digest"
+}
+
+backend_ref="$(push_image "$backend_image")"
+frontend_ref="$(push_image "$frontend_image")"
 
 deploy_image() {
-  local app="$1" image="$2" digest revision="$1--$revision_suffix" ready attempt
-  digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
-  [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-  image="${image%:*}@$digest"
+  local app="$1" image="$2" revision="$1--$revision_suffix" ready attempt
   az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
     --image "$image" --revision-suffix "$revision_suffix" --no-wait -o none
   for attempt in {1..24}; do
@@ -63,8 +72,8 @@ deploy_image() {
   return 1
 }
 
-deploy_image backend "$backend_image"
-deploy_image quiz-frontend "$frontend_image"
+deploy_image backend "$backend_ref"
+deploy_image quiz-frontend "$frontend_ref"
 
 frontend_host="$(az containerapp show --name quiz-frontend --resource-group "$AZURE_RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn -o tsv)"
