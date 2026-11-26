@@ -1,0 +1,52 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "127.0.0.1:8087:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    environment:
+      PGHOST: db
+      PGUSER: "${POSTGRES_USER:?POSTGRES_USER requis}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}"
+      PGDATABASE: "${POSTGRES_DB:?POSTGRES_DB requis}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:?ADMIN_USERNAME requis}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD requis}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET requis}"
+      CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID:-}"
+      CLOUDFLARE_EMAIL_API_TOKEN: "${CLOUDFLARE_EMAIL_API_TOKEN:-}"
+      FROM_EMAIL: "${FROM_EMAIL:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3007/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER requis}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}"
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB requis}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  postgres_data:

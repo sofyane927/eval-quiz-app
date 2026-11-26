@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import pg from "pg";
 import jwt from "jsonwebtoken";
-import { Resend } from "resend";
 import rateLimit from "express-rate-limit";
 
 const app = express();
@@ -13,6 +12,11 @@ app.set("trust proxy", 2);
 
 app.use(cors());
 app.use(express.json());
+
+// Health probes should not consume the API rate limit.
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
 // Rate limiting - general (100 requests per 15 min)
 const generalLimiter = rateLimit({
@@ -52,14 +56,11 @@ const pool = new pg.Pool({
   connectionTimeoutMillis: 2000,
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Admin config
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret";
-const FROM_EMAIL =
-  process.env.FROM_EMAIL || "Quiz App <noreply@notifications.labformation.fr>";
+const { CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_EMAIL_API_TOKEN, FROM_EMAIL } = process.env;
 
 // Auth middleware for admin routes
 function authenticateAdmin(req, res, next) {
@@ -295,15 +296,16 @@ app.post("/api/users", registrationLimiter, async (req, res) => {
 
 // Save quiz results and send email (with rate limiting)
 app.post("/api/results", resultsLimiter, async (req, res) => {
+  const { userId, score, totalQuestions, answers } = req.body;
+  if (!userId || score === undefined || !totalQuestions || !answers) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
   const client = await pool.connect();
+  let quizResultId;
+  let user;
 
   try {
-    const { userId, score, totalQuestions, answers } = req.body;
-
-    if (!userId || score === undefined || !totalQuestions || !answers) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
     await client.query("BEGIN");
 
     // Insert quiz result
@@ -311,7 +313,7 @@ app.post("/api/results", resultsLimiter, async (req, res) => {
       "INSERT INTO quiz_results (user_id, score, total_questions) VALUES ($1, $2, $3) RETURNING id",
       [userId, score, totalQuestions]
     );
-    const quizResultId = resultQuery.rows[0].id;
+    quizResultId = resultQuery.rows[0].id;
 
     // Insert each answer
     for (const answer of answers) {
@@ -330,32 +332,34 @@ app.post("/api/results", resultsLimiter, async (req, res) => {
       );
     }
 
-    await client.query("COMMIT");
-
-    // Get user info for email
-    const userQuery = await pool.query(
+    const userQuery = await client.query(
       "SELECT firstname, email FROM users WHERE id = $1",
       [userId]
     );
-    const user = userQuery.rows[0];
-
-    // Send email with results
-    await sendResultEmail(user, score, totalQuestions, answers);
-
-    res.status(201).json({
-      message: "Results saved and email sent",
-      quizResultId,
-    });
+    user = userQuery.rows[0];
+    await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error saving results:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   } finally {
     client.release();
   }
+
+  let emailAccepted = false;
+  try {
+    emailAccepted = await sendResultEmail(user, score, totalQuestions, answers);
+  } catch (error) {
+    console.error("Cloudflare email request failed", error.name);
+  }
+  res.status(201).json({ message: "Results saved", quizResultId, emailAccepted });
 });
 
 async function sendResultEmail(user, score, totalQuestions, answers) {
+  if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_EMAIL_API_TOKEN || !FROM_EMAIL) {
+    return false;
+  }
+
   const percentage = Math.round((score / totalQuestions) * 100);
 
   const answersHtml = answers
@@ -412,31 +416,32 @@ async function sendResultEmail(user, score, totalQuestions, answers) {
     </div>
   `;
 
-  try {
-    const result = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: user.email,
-      subject: `Résultats Quiz App - ${score}/${totalQuestions}`,
-      html,
-    });
-
-    if (result.error) {
-      console.error(`Failed to send email to ${user.email}:`, result.error);
-    } else {
-      console.log(
-        `Email sent successfully to ${user.email}, id:`,
-        result.data?.id
-      );
+  const account = encodeURIComponent(CLOUDFLARE_ACCOUNT_ID);
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${account}/email/sending/send`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CLOUDFLARE_EMAIL_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: user.email,
+        subject: `Résultats Quiz App - ${score}/${totalQuestions}`,
+        text: `Ton score est de ${score}/${totalQuestions} (${percentage} %).`,
+        html,
+      }),
+      signal: AbortSignal.timeout(8000),
     }
-  } catch (error) {
-    console.error(`Failed to send email to ${user.email}:`, error);
+  );
+  const { success, result } = await response.json();
+  if (response.ok && success && (result?.queued?.length || result?.delivered?.length)) {
+    return true;
   }
+  console.error("Cloudflare did not accept the result email", response.status);
+  return false;
 }
-
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

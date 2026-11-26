@@ -1,0 +1,43 @@
+name: Image security
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-and-scan:
+    name: Build and scan (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: frontend
+            context: .
+          - image: backend
+            context: ./backend
+    env:
+      IMAGE: quiz-${{ matrix.image }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        env:
+          BUILD_CONTEXT: ${{ matrix.context }}
+        run: docker build --tag "$IMAGE" "$BUILD_CONTEXT"
+
+      - name: Block critical vulnerabilities
+        run: |
+          docker save "$IMAGE" | docker run --rm -i --entrypoint sh \
+            aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb \
+            -ec 'cat > /tmp/image.tar; trivy image --input /tmp/image.tar --scanners vuln --severity CRITICAL --exit-code 1 --no-progress'

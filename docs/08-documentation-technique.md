@@ -4,7 +4,7 @@
 
 ## 1. Présentation
 
-**Quiz App** est une application de quiz sur des sujets techniques (notamment DevOps et Docker). Elle comporte une inscription utilisateur, l'enregistrement des résultats dans PostgreSQL, des notifications par email via Resend et un espace d'administration.
+**Quiz App** est une application de quiz sur des sujets techniques (notamment DevOps et Docker). Elle comporte une inscription utilisateur, l'enregistrement des résultats dans PostgreSQL, des notifications par email via Cloudflare Email Sending et un espace d'administration.
 
 Les questionnaires sont définis dans le code source, notamment dans `questions_docker.js`, d'après l'arborescence fournie. Une modification de questionnaire pourra servir de scénario de test pour une Pull Request ou Merge Request et la chaîne CI/CD.
 
@@ -16,7 +16,7 @@ Les questionnaires sont définis dans le code source, notamment dans `questions_
 | Nginx      | Serveur web et reverse proxy en production                      | **8087 sur l'hôte** dans la configuration Docker Compose d'origine ; Nginx reçoit le trafic sur **80 dans son conteneur** |
 | Backend    | API **Node.js / Express** (`backend/server.js`)                 | **3007** (`cd backend && npm run dev`)                                                                                    |
 | PostgreSQL | Base relationnelle, résultats et données persistantes           | **5432** (port PostgreSQL employé dans l'URL de connexion d'origine)                                                      |
-| Resend     | Service tiers d'envoi d'emails                                  | API externe ; clé de configuration nécessaire                                                                             |
+| Cloudflare Email Sending | Service tiers d'envoi d'emails | API HTTPS externe, activée si les variables d’envoi sont renseignées |
 
 **Attention :** le port `5173` est le port de développement Vite, pas nécessairement le port à exposer pour le frontend conteneurisé en production. Le port `8087` est le port d'accès local de la solution Docker Compose initiale ; les étudiants devront concevoir leur propre exposition réseau.
 
@@ -58,20 +58,23 @@ Le fonctionnement des opérations dépendantes de PostgreSQL suppose une base ac
 
 ## 4. Variables d'environnement
 
-Le projet d'origine documente les variables suivantes :
+Le projet utilise les variables suivantes :
 
 | Variable            | Rôle                                                                       |
 | ------------------- | -------------------------------------------------------------------------- |
 | `POSTGRES_USER`     | Utilisateur de PostgreSQL local                                            |
 | `POSTGRES_PASSWORD` | Mot de passe PostgreSQL local                                              |
 | `POSTGRES_DB`       | Nom de la base locale                                                      |
-| `DATABASE_URL`      | URL de connexion PostgreSQL fournie au backend dans le déploiement initial |
-| `RESEND_API_KEY`    | Clé d'API du service d'email                                               |
+| `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | Paramètres de connexion injectés par Docker Compose |
+| `DATABASE_URL`      | URL de connexion PostgreSQL utilisable hors de Docker Compose |
+| `CLOUDFLARE_ACCOUNT_ID` | Identifiant du compte Cloudflare |
+| `CLOUDFLARE_EMAIL_API_TOKEN` | Jeton Cloudflare avec la permission Email Sending → Edit |
+| `FROM_EMAIL` | Adresse d’expédition sur un domaine activé dans Cloudflare |
 | `ADMIN_USERNAME`    | Identifiant de l'administrateur                                            |
 | `ADMIN_PASSWORD`    | Mot de passe administrateur                                                |
 | `JWT_SECRET`        | Secret JWT                                                                 |
 
-La configuration `docker-compose.yml` montrée dans le README initial construit une URL de connexion locale de la forme `postgres://<utilisateur>:<mot-de-passe>@db:5432/<base>` ; le nom `db` fait référence au service PostgreSQL local. La variable `FROM_EMAIL` figure également dans l'extrait de configuration backend transmis pendant la préparation du projet : vérifier son caractère obligatoire dans le code.
+Docker Compose connecte le backend à `db` sur le port PostgreSQL par défaut (`5432`). Il transmet séparément l’identifiant, le mot de passe et le nom de la base. Les trois variables d’envoi d’email sont facultatives pour enregistrer les résultats.
 
 **Sécurité :** conserver les secrets hors du dépôt. Le fichier `.env.example`, s'il est fourni, doit contenir seulement des valeurs fictives et des indications de configuration.
 
