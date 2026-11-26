@@ -46,7 +46,7 @@ function displayRegistrationForm() {
       <div class="form-group">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required placeholder="votre@email.com">
-        <small class="form-hint">Vos résultats vous seront envoyés par email</small>
+        <small class="form-hint">En mode test, l’envoi est réservé aux adresses vérifiées.</small>
       </div>
       <div class="form-group">
         <label for="subject">Sujet du quiz</label>
@@ -187,12 +187,13 @@ function startQuiz() {
     app.appendChild(p);
 
     const savingP = document.createElement("p");
-    savingP.innerText = "Envoi des résultats en cours...";
+    savingP.innerText = "Enregistrement du résultat…";
     savingP.className = "saving-message";
+    savingP.setAttribute("role", "status");
     app.appendChild(savingP);
 
     try {
-      await fetch(`${API_URL}/results`, {
+      const response = await fetch(`${API_URL}/results`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -203,11 +204,17 @@ function startQuiz() {
         }),
       });
 
-      savingP.innerText = `Résultats envoyés par email à ${currentUser.email} !`;
+      if (!response.ok) {
+        throw new Error("Result could not be saved");
+      }
+      const { emailAccepted } = await response.json();
+      savingP.innerText = emailAccepted
+        ? "Résultat enregistré. L’envoi de l’email a été accepté."
+        : "Résultat enregistré. L’envoi de l’email n’a pas été confirmé.";
       savingP.className = "saving-message success";
     } catch (error) {
       console.error("Error saving results:", error);
-      savingP.innerText = "Erreur lors de l'envoi des résultats.";
+      savingP.innerText = "Impossible de confirmer l’enregistrement du résultat.";
       savingP.className = "saving-message error";
     }
   }

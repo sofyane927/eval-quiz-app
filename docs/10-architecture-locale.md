@@ -16,8 +16,8 @@ Seul le port de Nginx est publié. Le frontend envoie ses requêtes à `/api/` s
 
 - PostgreSQL reçoit `POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB`. Le backend reçoit `DATABASE_URL`, construite avec ces valeurs et l’hôte `db`. Le fichier `database/init.sql`, monté dans `/docker-entrypoint-initdb.d/`, initialise le schéma au premier démarrage sur un volume vide.
 - Un volume nommé conserve les données lors de la recréation du conteneur PostgreSQL. Le test de persistance garde ce volume.
-- Le backend reçoit `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `JWT_SECRET` et `RESEND_API_KEY`. `FROM_EMAIL` définit l’expéditeur. Le code actuel exige une valeur pour `RESEND_API_KEY` au démarrage. Il tente l’envoi après l’enregistrement du résultat et journalise les échecs d’envoi sans annuler cet enregistrement.
-- Traiter `POSTGRES_PASSWORD`, `DATABASE_URL` (qui contient le mot de passe), `ADMIN_PASSWORD`, `JWT_SECRET` et `RESEND_API_KEY` comme des secrets. Les valeurs locales restent dans le `.env` ignoré par Git. Le dépôt contient un `.env.example` avec des valeurs fictives.
+- Le backend reçoit `ADMIN_USERNAME`, `ADMIN_PASSWORD` et `JWT_SECRET`. Pour activer l’envoi via Cloudflare, renseigner aussi `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_API_TOKEN` et `FROM_EMAIL`. Le backend tente l’envoi après l’enregistrement du résultat.
+- Traiter `POSTGRES_PASSWORD`, `DATABASE_URL` (qui contient le mot de passe), `ADMIN_PASSWORD`, `JWT_SECRET` et `CLOUDFLARE_EMAIL_API_TOKEN` comme des secrets. Les valeurs locales restent dans le `.env` ignoré par Git. Le dépôt contient un `.env.example` avec des valeurs fictives.
 
 ## Vérification prévue
 

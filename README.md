@@ -43,6 +43,12 @@ Lisez les documents dans cet ordre :
 
 **Important :** les comptes Azure for Students peuvent être limités par les crédits, quotas, régions et autorisations. Vérifiez les possibilités de votre abonnement avant de créer des ressources payantes. Supprimez les ressources inutilisées après sauvegarde des preuves et accord du formateur.
 
+## Envoi des résultats avec Cloudflare
+
+Pour activer l’envoi, renseignez `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_API_TOKEN` et `FROM_EMAIL` dans le `.env` local. Le jeton doit avoir la permission **Email Sending → Edit**. Renseignez l’adresse seule dans `FROM_EMAIL`, par exemple `quiz@example.com` pour un domaine activé dans Cloudflare. Avec Workers Free, saisissez une adresse de destination vérifiée dans le même compte pour recevoir le résultat par email. [Documentation Cloudflare](https://developers.cloudflare.com/email-service/api/send-emails/rest-api/)
+
+Le backend peut démarrer et enregistrer les résultats sans ces variables. Un refus de Cloudflare laisse le résultat disponible dans l’administration.
+
 ## J2 — Sécurité de l’image frontend
 
 Trivy a relevé quatre vulnérabilités modérées dans l’image Nginx sur Alpine 3.24.4 (ARM64). Le Dockerfile met à jour `libexpat` de `2.10.0-r0` à `2.11.0-r0` et `zlib` de `1.3.2-r1` à `1.4-r0`. Après reconstruction, Trivy 0.76.2 a détecté zéro vulnérabilité dans cette image. [Rapport avant](docs/trivy/frontend-avant.json) · [Rapport après](docs/trivy/frontend-apres.json)

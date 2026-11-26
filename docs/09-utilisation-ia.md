@@ -14,7 +14,7 @@ L'IA générative est **autorisée comme outil d'apprentissage et d'assistance**
 
 - Soumettre une solution complète générée automatiquement sans analyse, adaptation ni test.
 - Présenter un travail non compris comme un travail maîtrisé.
-- Envoyer à une IA des mots de passe, tokens, clés Resend, secrets GitHub/GitLab, chaînes PostgreSQL réelles ou données personnelles.
+- Envoyer à une IA des mots de passe, tokens, clés d’API d’envoi d’emails, secrets GitHub/GitLab, chaînes PostgreSQL réelles ou données personnelles.
 - Utiliser l'IA pendant les courtes vérifications individuelles ou modifications en direct lorsque le formateur demande explicitement un travail autonome.
 
 ## Transparence attendue
