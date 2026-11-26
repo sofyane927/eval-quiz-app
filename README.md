@@ -43,6 +43,20 @@ Lisez les documents dans cet ordre :
 
 **Important :** les comptes Azure for Students peuvent être limités par les crédits, quotas, régions et autorisations. Vérifiez les possibilités de votre abonnement avant de créer des ressources payantes. Supprimez les ressources inutilisées après sauvegarde des preuves et accord du formateur.
 
+## J2 — Sécurité de l’image frontend
+
+Trivy a relevé quatre vulnérabilités modérées dans l’image Nginx sur Alpine 3.24.4 (ARM64). Le Dockerfile met à jour `libexpat` de `2.10.0-r0` à `2.11.0-r0` et `zlib` de `1.3.2-r1` à `1.4-r0`. Après reconstruction, Trivy 0.76.2 a détecté zéro vulnérabilité dans cette image. [Rapport avant](docs/trivy/frontend-avant.json) · [Rapport après](docs/trivy/frontend-apres.json)
+
+Pour reconstruire et scanner l’image avec Docker depuis Bash ou Zsh, lancez les commandes suivantes.
+
+```bash
+docker build -t quiz-frontend:j2 .
+trivy_image=aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+docker save quiz-frontend:j2 | docker run --rm -i --entrypoint /bin/sh "$trivy_image" \
+  -c 'cat > /tmp/quiz-frontend.tar && trivy image --no-progress --scanners vuln --format json --input /tmp/quiz-frontend.tar' \
+  > trivy-frontend-apres.json
+```
+
 ## Règles générales
 
 - Travail en groupe ; déposez le lien de votre dépôt et les preuves demandées au formateur.
