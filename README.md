@@ -41,8 +41,15 @@ Lisez les documents dans cet ordre :
 - [Documentation technique de Quiz App : ports, API et configuration](docs/08-documentation-technique.md)
 - [Utilisation responsable de l’IA](docs/09-utilisation-ia.md)
 - [Schéma d’architecture locale (PNG)](docs/architecture-locale.png)
+- [Schéma d’architecture Azure (PNG)](docs/architecture-azure.png)
 
 **Important :** les comptes Azure for Students peuvent être limités par les crédits, quotas, régions et autorisations. Vérifiez les possibilités de votre abonnement avant de créer des ressources payantes. Supprimez les ressources inutilisées après sauvegarde des preuves et accord du formateur.
+
+## Démarrer en local
+
+Copiez `.env.example` vers `.env` et renseignez les valeurs locales. Lancez ensuite `docker compose up -d --build --wait`. Ouvrez le [quiz en local](http://localhost:8087/) ou [l’administration](http://localhost:8087/gestion-quiz).
+
+Pour vérifier la persistance, terminez un quiz, retrouvez son score dans l’administration, puis lancez `docker compose up -d --force-recreate --wait` et vérifiez que le même résultat apparaît.
 
 ## Envoi des résultats avec Cloudflare
 
@@ -120,6 +127,21 @@ foreach ($app in @("backend", "quiz-frontend")) {
 Ajoutez les cinq valeurs affichées dans **Settings → Secrets and variables → Actions → Variables** sur le fork du groupe. La connexion OIDC est limitée à `main` et utilise un jeton temporaire. Les secrets Neon, Cloudflare et admin sont configurés sur le backend Azure. [Connexion Azure avec OIDC](https://learn.microsoft.com/fr-fr/azure/developer/github/connect-from-azure-openid-connect) · [Identifiant de sujet GitHub](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims)
 
 Pour relancer le même déploiement manuellement, positionnez-vous sur un `main` propre et à jour. Connectez-vous avec `az login` et lancez `bash scripts/deploy.sh` depuis la racine du dépôt avec `AZURE_ACR_NAME` et `AZURE_RESOURCE_GROUP` définies. La machine doit disposer de Docker avec Buildx, Azure CLI, curl et jq.
+
+## Preuves du scénario CI/CD
+
+- Le test de la [PR de démonstration](https://github.com/sofyane927/eval-quiz-app/pull/4) simule le code de sortie `1` d’un scan critique. GitHub bloque alors la fusion. Le code du test a été retiré avant la fusion. [Run bloqué](https://github.com/sofyane927/eval-quiz-app/actions/runs/45834118053)
+- Le [premier déploiement automatique](https://github.com/sofyane927/eval-quiz-app/actions/runs/45833158740) prouve la connexion OIDC, le tag commun `41afeca8845c90574fc1727aa0866d4a5a43794f` dans ACR et la mise à jour des deux Container Apps. Le [site public](https://quiz-frontend.redgrass-e29818c2.italynorth.azurecontainerapps.io/) relaie [`/health`](https://quiz-frontend.redgrass-e29818c2.italynorth.azurecontainerapps.io/health) vers le backend.
+
+## Nettoyer Azure après l’évaluation
+
+Conservez les preuves du déploiement et attendez l’accord du formateur. Depuis Bash, connectez-vous avec `az login` et définissez `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` et `AZURE_ACR_NAME`, comme pour le déploiement. Lancez `bash scripts/destroy.sh` pour afficher l’inventaire du groupe dédié au TP. Le script exige la présence du registre, de l’environnement et des deux applications du quiz. Il bloque la suppression si une ressource hors périmètre apparaît.
+
+Pour supprimer ce groupe et les ressources listées, relancez `bash scripts/destroy.sh --apply` et saisissez l’identifiant complet affiché. Cette suppression arrête le site Azure et efface le registre ACR. Les services Neon et Cloudflare se gèrent dans leurs comptes respectifs.
+
+## Usage de l’IA
+
+Nous avons utilisé Codex pour nous aider à écrire les Dockerfiles et les workflows, diagnostiquer les erreurs Azure, intégrer Cloudflare et préparer la documentation. Nous avons vérifié les propositions avec Docker Compose, les rapports Trivy, les contrôles GitHub et des essais sur Azure. Nous avons rejoué le parcours du quiz et vérifié que les scores apparaissaient dans PostgreSQL et dans l’administration. Le script de nettoyage a été testé avec des commandes Azure simulées.
 
 ## Règles générales
 

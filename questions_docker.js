@@ -1,7 +1,7 @@
 export const Questions = [
   {
     question:
-      "Quelle commande est utilisée pour créer une nouvelle image à partir d'un Dockerfile ?",
+      "Quelle commande Docker construit une image à partir d’un Dockerfile ?",
     answers: ["docker build", "docker make", "docker compile"],
     correct: "docker build",
   },
